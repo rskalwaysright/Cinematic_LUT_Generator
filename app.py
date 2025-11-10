@@ -9,8 +9,8 @@ from lut_generator import generate_cube_lut
 # Streamlit Page Configuration
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="🎬 Cinematic LUT Generator & Preview",
-    page_icon="🎨",
+    page_title="Cinematic LUT Generator",
+    page_icon="",
     layout="wide"
 )
 
