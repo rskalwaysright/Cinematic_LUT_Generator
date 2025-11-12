@@ -75,7 +75,7 @@ if page == "Generate LUT":
     if uploaded_ref:
         ref_path = WORKDIR / f"ref_{int(time.time())}_{uploaded_ref.name}"
         save_uploaded(uploaded_ref, ref_path)
-        st.image(ref_path, caption="Uploaded Reference Frame", use_column_width=True)
+        st.image(str(\1), caption="Uploaded Reference Frame", use_column_width=True)
 
         with st.spinner("Analyzing colors & generating LUT..."):
             try:
@@ -94,7 +94,7 @@ if page == "Generate LUT":
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.image(str(preview_path), caption="Extracted Palette", use_column_width=True)
+                    st.image(str(\1)(preview_path), caption="Extracted Palette", use_column_width=True)
                 with col2:
                     with open(lut_path, "rb") as f:
                         st.download_button("⬇️ Download .cube LUT", f, file_name=f"{ref_path.stem}.cube", mime="text/plain")
@@ -130,9 +130,9 @@ elif page == "Apply LUT":
 
             col1, col2 = st.columns(2)
             with col1:
-                st.image(original, caption="Before (Original)", use_column_width=True)
+                st.image(str(\1), caption="Before (Original)", use_column_width=True)
             with col2:
-                st.image(processed, caption="After (Cinematic LUT Applied)", use_column_width=True)
+                st.image(str(\1), caption="After (Cinematic LUT Applied)", use_column_width=True)
 
             out_img = Image.fromarray(processed)
             st.download_button("⬇️ Download Processed Image", pil_to_bytes(out_img), file_name=f"processed_{uploaded_test.name}", mime="image/png")
