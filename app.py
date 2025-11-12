@@ -1,16 +1,14 @@
-# app.py — Final Streamlit UI for Cinematic LUT Generator
+# app.py — Cinematic LUT Generator
 import streamlit as st
 import os, io, time, tempfile
 from pathlib import Path
 from PIL import Image
 import numpy as np
 import cv2
-
-# Local modules
 from color_analysis import extract_palette, visualize_palette
 from lut_generator import generate_cube_lut
 
-# ---------------- Page Config ----------------
+# ---------------- Streamlit Config ----------------
 st.set_page_config(
     page_title="Cinematic LUT Generator",
     page_icon="🎬",
@@ -18,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ---------------- CSS Styling ----------------
+# ---------------- Custom CSS ----------------
 st.markdown("""
 <style>
     .stApp {
@@ -39,7 +37,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- Sidebar ----------------
+# ---------------- Sidebar Controls ----------------
 st.sidebar.header("🎚 Controls & Navigation")
 page = st.sidebar.radio("Go to", ["Generate LUT", "Apply LUT", "Presets", "Help"])
 
@@ -67,28 +65,31 @@ def pil_to_bytes(img: Image.Image, fmt="PNG"):
     buf.seek(0)
     return buf
 
-# ---------------- PAGE 1: Generate LUT ----------------
+# ---------------- Generate LUT ----------------
 if page == "Generate LUT":
     st.markdown("<div class='title'>🎨 Generate Cinematic LUT</div>", unsafe_allow_html=True)
-    st.markdown("<div class='section'>Upload a cinematic reference image or frame. The app will extract a color palette and generate a .cube LUT file and a preview palette image.</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section'>Upload a cinematic reference frame. The app extracts dominant colors and generates a .cube LUT file with a color palette preview.</div>", unsafe_allow_html=True)
 
     uploaded_ref = st.file_uploader("Upload Reference Image", type=["jpg", "jpeg", "png"], key="ref")
 
     if uploaded_ref:
         ref_path = WORKDIR / f"ref_{int(time.time())}_{uploaded_ref.name}"
         save_uploaded(uploaded_ref, ref_path)
-        st.image(str(ref_path), caption="Uploaded Reference Frame", use_container_width=True)
+        st.image(ref_path, caption="Uploaded Reference Frame", use_container_width=True)
 
         with st.spinner("Analyzing colors & generating LUT..."):
             try:
                 colors = extract_palette(str(ref_path), n_colors=8)
                 preview_path = WORKDIR / f"palette_{ref_path.stem}.png"
-                visualize_palette(colors, save_path=str(preview_path))
                 lut_path = WORKDIR / f"{ref_path.stem}.cube"
+
+                visualize_palette(colors, save_path=str(preview_path))
                 generate_cube_lut(colors, size=lut_size, output_path=str(lut_path))
+
                 st.session_state["lut_colors"] = colors
                 st.session_state["lut_path"] = str(lut_path)
                 st.session_state["preview_path"] = str(preview_path)
+
                 st.success("✅ LUT generated successfully!")
 
                 col1, col2 = st.columns(2)
@@ -103,10 +104,10 @@ if page == "Generate LUT":
             except Exception as e:
                 st.error(f"Error generating LUT: {e}")
 
-# ---------------- PAGE 2: Apply LUT ----------------
+# ---------------- Apply LUT ----------------
 elif page == "Apply LUT":
     st.markdown("<div class='title'>🧪 Apply LUT to Image</div>", unsafe_allow_html=True)
-    st.markdown("<div class='section'>Upload any image to preview the generated LUT effect (simulated color transformation).</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section'>Upload an image to simulate the cinematic LUT effect using your generated color palette.</div>", unsafe_allow_html=True)
 
     if "lut_colors" not in st.session_state:
         st.warning("Please generate a LUT first under 'Generate LUT'.")
@@ -122,6 +123,7 @@ elif page == "Apply LUT":
             colors = st.session_state["lut_colors"]
             dominant = colors[0] / 255.0
             shift = (dominant - np.array([0.5, 0.5, 0.5])) * tint_strength
+
             arr_gamma = np.power(arr, gamma_curve)
             arr_out = np.clip(arr_gamma + shift * preview_intensity, 0.0, 1.0)
             processed = (arr_out * 255).astype(np.uint8)
@@ -135,13 +137,13 @@ elif page == "Apply LUT":
             out_img = Image.fromarray(processed)
             st.download_button("⬇️ Download Processed Image", pil_to_bytes(out_img), file_name=f"processed_{uploaded_test.name}", mime="image/png")
 
-# ---------------- PAGE 3: Presets ----------------
+# ---------------- Preset LUT Styles ----------------
 elif page == "Presets":
     st.markdown("<div class='title'>🎞 Preset Looks</div>", unsafe_allow_html=True)
     presets = {
         "Teal & Orange": {"tint": 1.1, "gamma": 0.95, "intensity": 0.75},
         "Vintage Warm": {"tint": 1.25, "gamma": 1.05, "intensity": 0.6},
-        "Noir (Desaturated Cool)": {"tint": 0.7, "gamma": 0.9, "intensity": 0.65},
+        "Noir (Cool Desat)": {"tint": 0.7, "gamma": 0.9, "intensity": 0.65},
         "Film Bleach Bypass": {"tint": 1.4, "gamma": 0.92, "intensity": 0.85}
     }
 
@@ -154,25 +156,29 @@ elif page == "Presets":
         - Gamma: `{p['gamma']}`
         - Intensity: `{p['intensity']}`
         """)
-        st.info("Adjust sidebar settings based on these values for quick LUT generation.")
+        st.info("Adjust sidebar sliders using these preset values for quick cinematic LUT generation.")
 
-# ---------------- PAGE 4: Help ----------------
+# ---------------- Help Page ----------------
 elif page == "Help":
     st.markdown("<div class='title'>❓ Help & Info</div>", unsafe_allow_html=True)
     st.markdown("""
     **Workflow**
-    1. Generate LUT → Upload reference frame → Download .cube + palette
-    2. Apply LUT → Upload another image → See cinematic transformation
+    1. Generate LUT → Upload reference image → Download `.cube` and palette
+    2. Apply LUT → Upload test image → See cinematic transformation
     3. Presets → Use predefined tone styles
 
-    **Deployment Tips**
-    - Works best with `opencv-python-headless`
-    - Ensure `requirements.txt` has pinned versions
-    - Deployed on Streamlit Cloud
+    **Deployment**
+    - Optimized for `opencv-python-headless`
+    - Ensure `requirements.txt` is pinned
+    - Runs on Streamlit Cloud
 
     **Credits**
     Created by *Reddy Sujith Kumar (2024BCS0280)*  
     GitHub: [rskalwaysright/Cinematic_LUT_Generator](https://github.com/rskalwaysright/Cinematic_LUT_Generator)
     """)
 
-st.markdown("<p style='text-align:center; color:#8ea0b8; font-size:12px;'>© 2025 Cinematic LUT Studio — Powered by Streamlit</p>", unsafe_allow_html=True)
+# ---------------- Footer ----------------
+st.markdown(
+    "<p style='text-align:center; color:#8ea0b8; font-size:12px;'>© 2025 Cinematic LUT Studio — Powered by Streamlit</p>",
+    unsafe_allow_html=True
+)
